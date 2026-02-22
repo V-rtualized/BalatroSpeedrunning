@@ -1,0 +1,20 @@
+{
+  "id": "BalatroSpeedrunning",
+  "name": "BalatroSpeedrunning",
+  "display_name": "Balatro Speedrunning",
+  "author": ["Virtualized", "Bean", "ArtifexDigital"],
+  "description": "A speedrunning mod that allows players to compete in real time",
+  "prefix": "spdrn",
+  "main_file": "core.lua",
+  "priority": 0,
+  "badge_colour": "A81E7A",
+  "badge_text_colour": "FFFFFF",
+  "version": "0.1.0",
+  "dependencies": [
+    "Steamodded (>=1.0.0~BETA-1221a)",
+    "Lovely (>=0.8)",
+    "Balatro (>=1.0.1o)",
+    "MultiplayerAPI"
+  ],
+  "conflicts": []
+}

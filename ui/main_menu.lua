@@ -9,6 +9,7 @@ local _find_game_button
 local _create_lobby_button
 local _join_by_code_button
 local _join_from_clipboard_button
+local _practice_button
 local _buttons_initialized = false
 
 local _connected = function()
@@ -35,7 +36,7 @@ SPDRN.create_main_menu_ui = function()
 						config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
 						nodes = {
 							_find_game_button.node,
-							_create_lobby_button.node,
+							_practice_button.node,
 							{
 								n = G.UIT.C,
 								config = { align = 'cm', padding = 0.1, r = 0.2, colour = G.C.BLACK },
@@ -57,6 +58,7 @@ SPDRN.create_main_menu_ui = function()
 									},
 								},
 							},
+							_create_lobby_button.node,
 						},
 					},
 				},
@@ -70,14 +72,14 @@ create_buttons = function()
 		_find_game_button = MPAPI.disableable_button({
 			id = 'spdrn_find_game',
 			button = 'spdrn_find_game',
-			colour = G.C.GREEN,
+			colour = G.C.BLUE,
 			minw = 3.65,
 			minh = 1.55,
 			label = localize('b_find_game_cap'),
 			disabled_text = { localize('b_find_game_cap') },
 			scale = 0.7,
 			col = true,
-			enabled = false,
+			enabled = true,
 		})
 		_create_lobby_button = MPAPI.disableable_button({
 			id = 'spdrn_create_lobby',
@@ -110,6 +112,17 @@ create_buttons = function()
 			scale = 0.45,
 			enabled = _connected,
 		})
+		_practice_button = MPAPI.disableable_button({
+			id = 'spdrn_practice',
+			button = 'spdrn_practice',
+			colour = G.C.ORANGE,
+			minw = 2.65,
+			minh = 1.35,
+			label = { localize('b_practice_cap') },
+			scale = 0.54,
+			col = true,
+			enabled = true,
+		})
 	end
 
 	_buttons_initialized = true
@@ -133,3 +146,5 @@ G.FUNCS.spdrn_create_lobby = function() end
 G.FUNCS.spdrn_join_lobby_by_code = function() end
 
 G.FUNCS.spdrn_join_lobby_from_clipboard = function() end
+
+G.FUNCS.spdrn_practice = function() end

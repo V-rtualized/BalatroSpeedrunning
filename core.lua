@@ -68,3 +68,7 @@ MPAPI.on_loaded(function()
 		SPDRN.update_main_menu_buttons()
 	end)
 end)
+
+SPDRN.is_active = function()
+	return MPAPI.get_active_mod() == SPDRN.id
+end

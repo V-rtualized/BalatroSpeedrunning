@@ -1,7 +1,7 @@
 {
-  "id": "BalatroSpeedrunning",
-  "name": "BalatroSpeedrunning",
-  "display_name": "Balatro Speedrunning",
+  "id": "MultiplayerSpeedrunning",
+  "name": "MultiplayerSpeedrunning",
+  "display_name": "Multiplayer Speedrunning",
   "author": ["Virtualized", "Bean", "ArtifexDigital"],
   "description": "A speedrunning mod that allows players to compete in real time",
   "prefix": "spdrn",

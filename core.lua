@@ -1,12 +1,70 @@
 SPDRN = SMODS.current_mod
 
-sendDebugMessage(SPDRN.id, SPDRN.id)
+-----------------------------
+-- CORE FUNCTIONS
+-----------------------------
+
+function SPDRN.sendDebugMessage(msg)
+	sendDebugMessage(msg, SPDRN.id)
+end
+
+function SPDRN.sendWarnMessage(msg)
+	sendWarnMessage(msg, SPDRN.id)
+end
+
+function SPDRN.load_spdrn_file(file)
+	local chunk, err = SMODS.load_file(file, SPDRN.id)
+	if chunk then
+		local ok, func = pcall(chunk)
+		if ok then
+			return func
+		else
+			SPDRN.sendWarnMessage('Failed to process file: ' .. func)
+		end
+	else
+		SPDRN.sendWarnMessage('Failed to find or compile file: ' .. tostring(err))
+	end
+	return nil
+end
+
+function SPDRN.load_spdrn_dir(directory, recursive)
+	recursive = recursive or false
+
+	local dir_path = SPDRN.path .. '/' .. directory
+	local items = NFS.getDirectoryItemsInfo(dir_path)
+
+	for _, item in ipairs(items) do
+		local path = directory .. '/' .. item.name
+		SPDRN.sendDebugMessage('Loading item: ' .. path)
+		if item.type ~= 'directory' then
+			SPDRN.load_spdrn_file(path)
+		elseif recursive then
+			SPDRN.load_spdrn_dir(path, recursive)
+		end
+	end
+end
+
+-----------------------------
+-- FILE LOADING
+-----------------------------
+
+SPDRN.load_spdrn_dir('ui')
+
+-----------------------------
+-- MP REGISTER
+-----------------------------
+
+SPDRN.mp_config = {
+	id = SPDRN.id,
+	name = 'Speedrun',
+	colour = G.C.GREEN,
+	main_menu_ui = SPDRN.create_main_menu_ui,
+}
 
 MPAPI.on_loaded(function()
-    MPAPI.connect({
-        api_url = "http://localhost:8788",
-        mqtt_broker = "localhost",
-        mqtt_port = 1883,
-        mqtt_secure = false,
-    })
+	MPAPI.register_mod(SPDRN.mp_config)
+
+	MPAPI.on_connection_state_change(function()
+		SPDRN.update_main_menu_buttons()
+	end)
 end)

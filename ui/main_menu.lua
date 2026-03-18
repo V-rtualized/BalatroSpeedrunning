@@ -1,5 +1,7 @@
 -- Forward declarations for helper functions
 local create_buttons
+local create_lobby_buttons
+local setup_lobby_events
 
 -----------------------------
 -- STATE VARIABLES
@@ -12,17 +14,20 @@ local _join_from_clipboard_button
 local _practice_button
 local _buttons_initialized = false
 
-local _connected = function()
-	return MPAPI.is_connected() == 'connected'
-end
+local _lobby_options_button
+local _leave_lobby_button
+local _lobby_buttons_initialized = false
+
+local _current_lobby_ref = nil
+local _current_lobby_ui_ref = nil
 
 -----------------------------
 -- UI FUNCTIONS
 -----------------------------
 
-SPDRN.create_main_menu_ui = function()
+SPDRN.build_pre_lobby_ui = function()
 	create_buttons()
-
+	MPAPI.set_logo_offset(0, true)
 	return {
 		n = G.UIT.ROOT,
 		config = { align = 'cm', colour = G.C.CLEAR },
@@ -67,6 +72,32 @@ SPDRN.create_main_menu_ui = function()
 	}
 end
 
+SPDRN.build_in_lobby_ui = function()
+	create_lobby_buttons()
+	MPAPI.set_logo_offset(-10, true)
+	return {
+		n = G.UIT.ROOT,
+		config = { align = 'cm', colour = G.C.CLEAR },
+		nodes = {
+			{
+				n = G.UIT.C,
+				config = { align = 'cm' },
+				nodes = {
+					_current_lobby_ui_ref.node,
+					{
+						n = G.UIT.R,
+						config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
+						nodes = {
+							_lobby_options_button.node,
+							_leave_lobby_button.node,
+						},
+					},
+				},
+			},
+		},
+	}
+end
+
 create_buttons = function()
 	if not _buttons_initialized then
 		_find_game_button = MPAPI.disableable_button({
@@ -75,8 +106,7 @@ create_buttons = function()
 			colour = G.C.BLUE,
 			minw = 3.65,
 			minh = 1.55,
-			label = localize('b_find_game_cap'),
-			disabled_text = { localize('b_find_game_cap') },
+			label = { localize('b_find_game_cap') },
 			scale = 0.7,
 			col = true,
 			enabled = true,
@@ -90,7 +120,7 @@ create_buttons = function()
 			label = localize('b_create_lobby_cap'),
 			scale = 0.7,
 			col = true,
-			enabled = _connected,
+			enabled = MPAPI.is_connected(),
 		})
 		_join_by_code_button = MPAPI.disableable_button({
 			id = 'spdrn_join_lobby_by_code',
@@ -100,7 +130,7 @@ create_buttons = function()
 			minh = 0.6,
 			label = { localize('b_by_code_cap') },
 			scale = 0.45,
-			enabled = _connected,
+			enabled = MPAPI.is_connected(),
 		})
 		_join_from_clipboard_button = MPAPI.disableable_button({
 			id = 'spdrn_join_lobby_from_clipboard',
@@ -110,7 +140,7 @@ create_buttons = function()
 			minh = 0.6,
 			label = { localize('b_from_clipboard_cap') },
 			scale = 0.45,
-			enabled = _connected,
+			enabled = MPAPI.is_connected(),
 		})
 		_practice_button = MPAPI.disableable_button({
 			id = 'spdrn_practice',
@@ -128,6 +158,35 @@ create_buttons = function()
 	_buttons_initialized = true
 end
 
+create_lobby_buttons = function()
+	if not _lobby_buttons_initialized then
+		_lobby_options_button = MPAPI.disableable_button({
+			id = 'spdrn_lobby_options',
+			button = 'spdrn_lobby_options',
+			colour = G.C.ORANGE,
+			minw = 3.65,
+			minh = 1.55,
+			label = localize('b_lobby_options_cap'),
+			scale = 0.7,
+			col = true,
+			enabled = true,
+		})
+		_leave_lobby_button = MPAPI.disableable_button({
+			id = 'spdrn_leave_lobby',
+			button = 'spdrn_leave_lobby',
+			colour = G.C.RED,
+			minw = 3.65,
+			minh = 1.55,
+			label = localize('b_leave_lobby_cap'),
+			scale = 0.7,
+			col = true,
+			enabled = true,
+		})
+	end
+
+	_lobby_buttons_initialized = true
+end
+
 -----------------------------
 -- LOGIC FUNCTIONS
 -----------------------------
@@ -141,10 +200,135 @@ SPDRN.update_main_menu_buttons = function()
 	end
 end
 
-G.FUNCS.spdrn_create_lobby = function() end
+setup_lobby_events = function(lobby, lobby_ui)
+	_current_lobby_ref = lobby
+	_current_lobby_ui_ref = lobby_ui
 
-G.FUNCS.spdrn_join_lobby_by_code = function() end
+	lobby:on('player_joined', function(player_id)
+		SPDRN.sendDebugMessage('Player joined: ' .. tostring(player_id))
+	end)
 
-G.FUNCS.spdrn_join_lobby_from_clipboard = function() end
+	lobby:on('player_left', function(player_id)
+		SPDRN.sendDebugMessage('Player left: ' .. tostring(player_id))
+	end)
+
+	lobby:on('error', function(err)
+		SPDRN.sendWarnMessage('Lobby error: ' .. tostring(err))
+	end)
+
+	lobby:on('disconnected', function()
+		SPDRN.sendDebugMessage('Disconnected from lobby')
+		_current_lobby_ref = nil
+		_current_lobby_ui_ref = nil
+	end)
+end
+
+G.FUNCS.spdrn_create_lobby = function()
+	local lobby = MPAPI.create_lobby(SPDRN.id, { max_players = 16 })
+	if not lobby then
+		return
+	end
+
+	local lobby_ui = MPAPI.create_lobby_ui(lobby)
+	setup_lobby_events(lobby, lobby_ui)
+
+	lobby:on('connected', function()
+		SPDRN.sendDebugMessage('Lobby created: ' .. tostring(lobby.code))
+		love.system.setClipboardText(lobby.code)
+		SPDRN.sendDebugMessage('Code copied to clipboard')
+		-- UI transition is driven by MPAPI.on_lobby_connected
+	end)
+end
+
+G.FUNCS.spdrn_join_lobby_by_code = function()
+	G.FUNCS.overlay_menu({
+		definition = {
+			n = G.UIT.ROOT,
+			config = { align = 'cm', colour = G.C.CLEAR },
+			nodes = {
+				{
+					n = G.UIT.R,
+					config = { align = 'cm', padding = 0.2, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK },
+					nodes = {
+						{ n = G.UIT.R, config = { align = 'cm', padding = 0.05 }, nodes = {
+							{ n = G.UIT.T, config = { text = localize('b_join_lobby_cap'), scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
+						} },
+						{
+							n = G.UIT.R,
+							config = { align = 'cm', padding = 0.1 },
+							nodes = {
+								create_text_input({ id = 'spdrn_lobby_code_input', ref_table = { text = '' }, ref_value = 'text', prompt_text = 'LOBBY CODE', max_length = 6, all_caps = true, w = 4, h = 0.6 }),
+							},
+						},
+						{
+							n = G.UIT.R,
+							config = { align = 'cm', padding = 0.1 },
+							nodes = {
+								UIBox_button({ id = 'spdrn_join_lobby_confirm', button = 'spdrn_join_lobby_confirm', colour = G.C.GREEN, minw = 2, minh = 0.6, label = { localize('b_join_lobby_cap') }, scale = 0.45 }),
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+end
+
+G.FUNCS.spdrn_join_lobby_confirm = function()
+	local code = G.OVERLAY_MENU and G.OVERLAY_MENU:get_UIE_by_ID('spdrn_lobby_code_input')
+	if code and code.config and code.config.ref_table then
+		local text = code.config.ref_table.text or ''
+		text = text:match('^%s*(.-)%s*$') or ''
+		if #text > 0 then
+			G.FUNCS.overlay_menu_close()
+			SPDRN._join_lobby_with_code(text)
+		end
+	end
+end
+
+G.FUNCS.spdrn_join_lobby_from_clipboard = function()
+	local code = love.system.getClipboardText() or ''
+	code = code:match('^%s*(.-)%s*$') or ''
+	if #code > 0 then
+		SPDRN._join_lobby_with_code(code)
+	end
+end
+
+SPDRN._join_lobby_with_code = function(code)
+	local lobby = MPAPI.join_lobby(SPDRN.id, code)
+	if not lobby then
+		return
+	end
+
+	local lobby_ui = MPAPI.create_lobby_ui(lobby)
+	setup_lobby_events(lobby, lobby_ui)
+
+	lobby:on('connected', function()
+		SPDRN.sendDebugMessage('Joined lobby: ' .. tostring(lobby.code))
+		-- UI transition is driven by MPAPI.on_lobby_connected
+	end)
+
+	lobby:on('metadata_changed', function(metadata)
+		SPDRN.sendDebugMessage('Metadata changed')
+	end)
+end
+
+G.FUNCS.spdrn_lobby_options = function()
+	G.FUNCS.overlay_menu({
+		definition = create_UIBox_generic_options({
+			contents = {
+				{ n = G.UIT.R, config = { align = 'cm', padding = 0.1 }, nodes = {
+					{ n = G.UIT.T, config = { text = 'Lobby Options', scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
+				} },
+			},
+		}),
+	})
+end
+
+G.FUNCS.spdrn_leave_lobby = function()
+	if _current_lobby_ref then
+		_current_lobby_ref:leave()
+	end
+end
 
 G.FUNCS.spdrn_practice = function() end

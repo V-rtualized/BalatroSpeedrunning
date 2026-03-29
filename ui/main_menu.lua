@@ -1,11 +1,11 @@
--- Forward declarations for helper functions
+-- Forward declaration for helper function
 local create_buttons
-local create_lobby_buttons
-local setup_lobby_events
 
 -----------------------------
 -- STATE VARIABLES
 -----------------------------
+
+local _pending_gamemode_key = nil
 
 local _find_game_button
 local _create_lobby_button
@@ -13,13 +13,6 @@ local _join_by_code_button
 local _join_from_clipboard_button
 local _practice_button
 local _buttons_initialized = false
-
-local _lobby_options_button
-local _leave_lobby_button
-local _lobby_buttons_initialized = false
-
-local _current_lobby_ref = nil
-local _current_lobby_ui_ref = nil
 
 -----------------------------
 -- UI FUNCTIONS
@@ -64,32 +57,6 @@ SPDRN.build_pre_lobby_ui = function()
 								},
 							},
 							_create_lobby_button.node,
-						},
-					},
-				},
-			},
-		},
-	}
-end
-
-SPDRN.build_in_lobby_ui = function()
-	create_lobby_buttons()
-	MPAPI.set_logo_offset(-10, true)
-	return {
-		n = G.UIT.ROOT,
-		config = { align = 'cm', colour = G.C.CLEAR },
-		nodes = {
-			{
-				n = G.UIT.C,
-				config = { align = 'cm' },
-				nodes = {
-					_current_lobby_ui_ref.node,
-					{
-						n = G.UIT.R,
-						config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
-						nodes = {
-							_lobby_options_button.node,
-							_leave_lobby_button.node,
 						},
 					},
 				},
@@ -158,35 +125,6 @@ create_buttons = function()
 	_buttons_initialized = true
 end
 
-create_lobby_buttons = function()
-	if not _lobby_buttons_initialized then
-		_lobby_options_button = MPAPI.disableable_button({
-			id = 'spdrn_lobby_options',
-			button = 'spdrn_lobby_options',
-			colour = G.C.ORANGE,
-			minw = 3.65,
-			minh = 1.55,
-			label = localize('b_lobby_options_cap'),
-			scale = 0.7,
-			col = true,
-			enabled = true,
-		})
-		_leave_lobby_button = MPAPI.disableable_button({
-			id = 'spdrn_leave_lobby',
-			button = 'spdrn_leave_lobby',
-			colour = G.C.RED,
-			minw = 3.65,
-			minh = 1.55,
-			label = localize('b_leave_lobby_cap'),
-			scale = 0.7,
-			col = true,
-			enabled = true,
-		})
-	end
-
-	_lobby_buttons_initialized = true
-end
-
 -----------------------------
 -- LOGIC FUNCTIONS
 -----------------------------
@@ -200,44 +138,64 @@ SPDRN.update_main_menu_buttons = function()
 	end
 end
 
-setup_lobby_events = function(lobby, lobby_ui)
-	_current_lobby_ref = lobby
-	_current_lobby_ui_ref = lobby_ui
-
-	lobby:on('player_joined', function(player_id)
-		SPDRN.sendDebugMessage('Player joined: ' .. tostring(player_id))
-	end)
-
-	lobby:on('player_left', function(player_id)
-		SPDRN.sendDebugMessage('Player left: ' .. tostring(player_id))
-	end)
-
-	lobby:on('error', function(err)
-		SPDRN.sendWarnMessage('Lobby error: ' .. tostring(err))
-	end)
-
-	lobby:on('disconnected', function()
-		SPDRN.sendDebugMessage('Disconnected from lobby')
-		_current_lobby_ref = nil
-		_current_lobby_ui_ref = nil
-	end)
+G.FUNCS.spdrn_create_lobby = function()
+	G.FUNCS.overlay_menu({
+		definition = create_UIBox_generic_options({
+			contents = {
+				{ n = G.UIT.R, config = { align = 'cm', padding = 0.1 }, nodes = {
+					{ n = G.UIT.T, config = { text = 'Select Gamemode', scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
+				} },
+				{
+					n = G.UIT.R,
+					config = { align = 'cm', padding = 0.05 },
+					nodes = {
+						UIBox_button({ id = 'spdrn_gm_white', button = 'spdrn_select_white_stake_triple', label = { 'White Stake Triple' }, colour = G.C.WHITE, minw = 4, minh = 0.7, scale = 0.5 }),
+					},
+				},
+				{
+					n = G.UIT.R,
+					config = { align = 'cm', padding = 0.05 },
+					nodes = {
+						UIBox_button({ id = 'spdrn_gm_gold', button = 'spdrn_select_gold_stake_single', label = { 'Gold Stake Single' }, colour = G.C.GOLD, minw = 4, minh = 0.7, scale = 0.5 }),
+					},
+				},
+			},
+		}),
+	})
 end
 
-G.FUNCS.spdrn_create_lobby = function()
-	local lobby = MPAPI.create_lobby(SPDRN.id, { max_players = 16 })
+local function create_lobby_with_gamemode(key)
+	_pending_gamemode_key = key
+	G.FUNCS.exit_overlay_menu()
+
+	local gm = MPAPI.GameModes[key]
+	local lobby = MPAPI.create_lobby(SPDRN.id, { max_players = gm and gm:get_max_players('private') or 16 })
 	if not lobby then
+		_pending_gamemode_key = nil
 		return
 	end
 
 	local lobby_ui = MPAPI.create_lobby_ui(lobby)
-	setup_lobby_events(lobby, lobby_ui)
+	SPDRN.setup_lobby_events(lobby, lobby_ui)
 
 	lobby:on('connected', function()
 		SPDRN.sendDebugMessage('Lobby created: ' .. tostring(lobby.code))
 		love.system.setClipboardText(lobby.code)
 		SPDRN.sendDebugMessage('Code copied to clipboard')
+		if _pending_gamemode_key then
+			lobby:set_metadata({ gamemode = _pending_gamemode_key, deck = 'Blue Deck' })
+			_pending_gamemode_key = nil
+		end
 		-- UI transition is driven by MPAPI.on_lobby_connected
 	end)
+end
+
+G.FUNCS.spdrn_select_white_stake_triple = function()
+	create_lobby_with_gamemode('spdrn_white_stake_triple')
+end
+
+G.FUNCS.spdrn_select_gold_stake_single = function()
+	create_lobby_with_gamemode('spdrn_gold_stake_single')
 end
 
 G.FUNCS.spdrn_join_lobby_by_code = function()
@@ -280,7 +238,7 @@ G.FUNCS.spdrn_join_lobby_confirm = function()
 		local text = code.config.ref_table.text or ''
 		text = text:match('^%s*(.-)%s*$') or ''
 		if #text > 0 then
-			G.FUNCS.overlay_menu_close()
+			G.FUNCS.exit_overlay_menu()
 			SPDRN._join_lobby_with_code(text)
 		end
 	end
@@ -301,7 +259,7 @@ SPDRN._join_lobby_with_code = function(code)
 	end
 
 	local lobby_ui = MPAPI.create_lobby_ui(lobby)
-	setup_lobby_events(lobby, lobby_ui)
+	SPDRN.setup_lobby_events(lobby, lobby_ui)
 
 	lobby:on('connected', function()
 		SPDRN.sendDebugMessage('Joined lobby: ' .. tostring(lobby.code))
@@ -313,22 +271,6 @@ SPDRN._join_lobby_with_code = function(code)
 	end)
 end
 
-G.FUNCS.spdrn_lobby_options = function()
-	G.FUNCS.overlay_menu({
-		definition = create_UIBox_generic_options({
-			contents = {
-				{ n = G.UIT.R, config = { align = 'cm', padding = 0.1 }, nodes = {
-					{ n = G.UIT.T, config = { text = 'Lobby Options', scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
-				} },
-			},
-		}),
-	})
-end
-
-G.FUNCS.spdrn_leave_lobby = function()
-	if _current_lobby_ref then
-		_current_lobby_ref:leave()
-	end
-end
+G.FUNCS.spdrn_find_game = function() end
 
 G.FUNCS.spdrn_practice = function() end

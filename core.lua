@@ -56,34 +56,44 @@ SPDRN.load_spdrn_dir('ui')
 
 MPAPI.on_loaded(function()
 	MPAPI.register_mod({
-		id     = SPDRN.id,
-		name   = 'Speedrun',
+		id = SPDRN.id,
+		name = 'Speedrun',
 		colour = G.C.GREEN,
+		prevent_pause = true,
+		options_builder = SPDRN.create_run_options,
 
 		-- { builder, cleanup } pair. The cleanup animates the current UIBox out
 		-- and returns (delay, on_enter) for the incoming UIBox.
-		main_menu_ui = { SPDRN.build_pre_lobby_ui, function(uibox)
-			MPAPI.set_logo_offset(-2.5)
-			uibox.alignment.offset.x = -15
-			uibox.alignment.offset.y = 10
-			return 0.4, function(new_uibox)
-				new_uibox.VT.x = new_uibox.T.x + 15
-			end
-		end },
+		main_menu_ui = {
+			SPDRN.build_pre_lobby_ui,
+			function(uibox)
+				MPAPI.set_logo_offset(-2.5)
+				uibox.alignment.offset.x = -15
+				uibox.alignment.offset.y = 10
+				return 0.4, function(new_uibox)
+					new_uibox.VT.x = new_uibox.T.x + 15
+				end
+			end,
+		},
 
-		lobby_ui = { SPDRN.build_in_lobby_ui, function(uibox)
-			uibox.alignment.offset.x = 15
-			uibox.alignment.offset.y = 10
-			return 0.4, function(new_uibox)
-				MPAPI.set_logo_offset(0)
-				new_uibox.VT.x = new_uibox.T.x - 15
-			end
-		end },
+		lobby_ui = {
+			SPDRN.build_in_lobby_ui,
+			function(uibox)
+				uibox.alignment.offset.x = 15
+				uibox.alignment.offset.y = 10
+				return 0.4, function(new_uibox)
+					MPAPI.set_logo_offset(0)
+					new_uibox.VT.x = new_uibox.T.x - 15
+				end
+			end,
+		},
 	})
 
 	MPAPI.on_connection_state_change(function()
 		SPDRN.update_main_menu_buttons()
 	end)
+
+	SPDRN.load_spdrn_dir('objects', true)
 end)
 
 SPDRN.is_active = function()

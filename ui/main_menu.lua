@@ -43,7 +43,7 @@ SPDRN.build_pre_lobby_ui = function()
 										n = G.UIT.C,
 										config = { align = 'cm', maxh = 1.4 },
 										nodes = {
-											{ n = G.UIT.T, config = { text = localize('b_join_lobby_cap'), scale = 0.45, colour = G.C.UI.TEXT_LIGHT, vert = true, maxh = 1.4 } },
+											{ n = G.UIT.T, config = { text = localize('k_join_lobby_cap'), scale = 0.45, colour = G.C.UI.TEXT_LIGHT, vert = true, maxh = 1.4 } },
 										},
 									},
 									{
@@ -138,6 +138,10 @@ SPDRN.update_main_menu_buttons = function()
 	end
 end
 
+G.FUNCS.spdrn_gm_shadows = function(e)
+	e.shadow_parrallax = { x = 0, y = -1.5 * e.config.minh ^ 0.25 }
+end
+
 G.FUNCS.spdrn_create_lobby = function()
 	G.FUNCS.overlay_menu({
 		definition = create_UIBox_generic_options({
@@ -147,16 +151,110 @@ G.FUNCS.spdrn_create_lobby = function()
 				} },
 				{
 					n = G.UIT.R,
-					config = { align = 'cm', padding = 0.05 },
+					config = { align = 'cm' },
 					nodes = {
-						UIBox_button({ id = 'spdrn_gm_white', button = 'spdrn_select_white_stake_triple', label = { 'White Stake Triple' }, colour = G.C.WHITE, minw = 4, minh = 0.7, scale = 0.5 }),
-					},
-				},
-				{
-					n = G.UIT.R,
-					config = { align = 'cm', padding = 0.05 },
-					nodes = {
-						UIBox_button({ id = 'spdrn_gm_gold', button = 'spdrn_select_gold_stake_single', label = { 'Gold Stake Single' }, colour = G.C.GOLD, minw = 4, minh = 0.7, scale = 0.5 }),
+						{
+							n = G.UIT.C,
+							config = { align = 'cm', padding = 0.05 },
+							nodes = {
+								UIBox_button({
+									id = 'spdrn_gm_white_triple',
+									button = 'spdrn_select_white_stake_triple',
+									label = { 'White', 'Stake', 'Triple' },
+									colour = G.C.ETERNAL,
+									minw = 1,
+									minh = 3.2,
+									scale = 0.5,
+									func = 'spdrn_gm_shadows',
+								}),
+							},
+						},
+						{
+							n = G.UIT.C,
+							config = { align = 'cm' },
+							nodes = {
+								{
+									n = G.UIT.R,
+									config = { align = 'cm' },
+									nodes = {
+										{
+											n = G.UIT.C,
+											config = { align = 'cm', padding = 0.05 },
+											nodes = {
+												UIBox_button({
+													id = 'spdrn_gm_gold_triple',
+													button = 'spdrn_select_gold_stake_single',
+													label = { 'Seed', 'Scout' },
+													colour = G.C.BLUE,
+													minw = 1,
+													minh = 2.1,
+													scale = 0.5,
+													func = 'spdrn_gm_shadows',
+												}),
+											},
+										},
+										{
+											n = G.UIT.C,
+											config = { align = 'cm' },
+											nodes = {
+												{
+													n = G.UIT.R,
+													config = { align = 'cm', padding = 0.05 },
+													nodes = {
+														UIBox_button({ id = 'spdrn_gm_challenge', button = 'spdrn_select_challenge', label = { 'Challenge' }, colour = G.C.RED, minw = 2.1, minh = 1, scale = 0.5, func = 'spdrn_gm_shadows' }),
+													},
+												},
+												{
+													n = G.UIT.R,
+													config = { align = 'cm' },
+													nodes = {
+														{
+															n = G.UIT.C,
+															config = { align = 'cm', padding = 0.05 },
+															nodes = {
+																UIBox_button({
+																	id = 'spdrn_gm_all_deck',
+																	button = 'spdrn_select_all_deck',
+																	label = { 'All', 'Deck' },
+																	colour = G.C.PURPLE,
+																	minw = 1,
+																	minh = 1,
+																	scale = 0.5,
+																	func = 'spdrn_gm_shadows',
+																}),
+															},
+														},
+														{
+															n = G.UIT.C,
+															config = { align = 'cm', padding = 0.05 },
+															nodes = {
+																UIBox_button({
+																	id = 'spdrn_gm_stake_climb',
+																	button = 'spdrn_select_stake_climb',
+																	label = { 'Stake', 'Climb' },
+																	colour = G.C.GREEN,
+																	minw = 1,
+																	minh = 1,
+																	scale = 0.5,
+																	func = 'spdrn_gm_shadows',
+																}),
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									n = G.UIT.R,
+									config = { align = 'cm', padding = 0.05 },
+									nodes = {
+										UIBox_button({ id = 'spdrn_gm_gold', button = 'spdrn_select_gold_stake_single', label = { 'Gold Stake Single' }, colour = G.C.GOLD, minw = 3.2, minh = 1, scale = 0.5, func = 'spdrn_gm_shadows' }),
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -175,8 +273,7 @@ local function create_lobby_with_gamemode(key)
 		return
 	end
 
-	local lobby_ui = MPAPI.create_lobby_ui(lobby)
-	SPDRN.setup_lobby_events(lobby, lobby_ui)
+	SPDRN.setup_lobby_events(lobby)
 
 	lobby:on('connected', function()
 		SPDRN.sendDebugMessage('Lobby created: ' .. tostring(lobby.code))
@@ -186,7 +283,6 @@ local function create_lobby_with_gamemode(key)
 			lobby:set_metadata({ gamemode = _pending_gamemode_key, deck = 'Blue Deck' })
 			_pending_gamemode_key = nil
 		end
-		-- UI transition is driven by MPAPI.on_lobby_connected
 	end)
 end
 
@@ -200,35 +296,38 @@ end
 
 G.FUNCS.spdrn_join_lobby_by_code = function()
 	G.FUNCS.overlay_menu({
-		definition = {
-			n = G.UIT.ROOT,
-			config = { align = 'cm', colour = G.C.CLEAR },
-			nodes = {
+		definition = create_UIBox_generic_options({
+			snap_back = true,
+			contents = {
 				{
 					n = G.UIT.R,
-					config = { align = 'cm', padding = 0.2, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK },
+					config = { align = 'cm', padding = 0.2, r = 0.1 },
 					nodes = {
-						{ n = G.UIT.R, config = { align = 'cm', padding = 0.05 }, nodes = {
-							{ n = G.UIT.T, config = { text = localize('b_join_lobby_cap'), scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
-						} },
 						{
 							n = G.UIT.R,
-							config = { align = 'cm', padding = 0.1 },
+							config = { align = 'cm', padding = 0.05 },
 							nodes = {
-								create_text_input({ id = 'spdrn_lobby_code_input', ref_table = { text = '' }, ref_value = 'text', prompt_text = 'LOBBY CODE', max_length = 6, all_caps = true, w = 4, h = 0.6 }),
+								{ n = G.UIT.T, config = { text = localize('k_lobby_code_cap'), scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
 							},
 						},
 						{
 							n = G.UIT.R,
 							config = { align = 'cm', padding = 0.1 },
 							nodes = {
-								UIBox_button({ id = 'spdrn_join_lobby_confirm', button = 'spdrn_join_lobby_confirm', colour = G.C.GREEN, minw = 2, minh = 0.6, label = { localize('b_join_lobby_cap') }, scale = 0.45 }),
+								create_text_input({ id = 'spdrn_lobby_code_input', ref_table = { text = '' }, ref_value = 'text', prompt_text = localize('k_lobby_code_cap'), max_length = 6, all_caps = true, w = 4, h = 0.6 }),
+							},
+						},
+						{
+							n = G.UIT.R,
+							config = { align = 'cm', padding = 0.1 },
+							nodes = {
+								UIBox_button({ id = 'spdrn_join_lobby_confirm', button = 'spdrn_join_lobby_confirm', colour = G.C.GREEN, minw = 2, minh = 0.6, label = { localize('k_join_lobby_cap') }, scale = 0.45 }),
 							},
 						},
 					},
 				},
 			},
-		},
+		}),
 	})
 end
 
@@ -258,8 +357,7 @@ SPDRN._join_lobby_with_code = function(code)
 		return
 	end
 
-	local lobby_ui = MPAPI.create_lobby_ui(lobby)
-	SPDRN.setup_lobby_events(lobby, lobby_ui)
+	SPDRN.setup_lobby_events(lobby)
 
 	lobby:on('connected', function()
 		SPDRN.sendDebugMessage('Joined lobby: ' .. tostring(lobby.code))

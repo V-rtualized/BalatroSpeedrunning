@@ -5,7 +5,8 @@
 local _lobby_options_button
 local _leave_lobby_button
 local _start_game_button
-local _gamemode_display
+local _view_code_button
+local _copy_code_button
 local _lobby_buttons_initialized = false
 
 local _current_lobby_ref = nil
@@ -30,7 +31,7 @@ SPDRN.build_in_lobby_ui = function()
 				nodes = {
 					{
 						n = G.UIT.R,
-						config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
+						config = { align = 'cm', padding = 0.1, mid = true },
 						nodes = {
 							_current_lobby_ui_ref.node,
 						},
@@ -47,19 +48,33 @@ SPDRN.build_in_lobby_ui = function()
 								n = G.UIT.C,
 								config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
 								nodes = {
-									_gamemode_display.node,
 									{
 										n = G.UIT.R,
-										config = { align = 'cm' },
+										config = { align = 'cm', padding = 0.1 },
 										nodes = {
 											_start_game_button.node,
-										},
-									},
-									{
-										n = G.UIT.R,
-										config = { align = 'cm' },
-										nodes = {
 											_lobby_options_button.node,
+											{
+												n = G.UIT.C,
+												config = { align = 'cm', padding = 0.1, r = 0.2, colour = G.C.BLACK },
+												nodes = {
+													{
+														n = G.UIT.C,
+														config = { align = 'cm', maxh = 1.4 },
+														nodes = {
+															{ n = G.UIT.T, config = { text = localize('k_lobby_code_cap'), scale = 0.45, colour = G.C.UI.TEXT_LIGHT, vert = true, maxh = 1.4 } },
+														},
+													},
+													{
+														n = G.UIT.C,
+														config = { align = 'cm', padding = 0.1 },
+														nodes = {
+															{ n = G.UIT.R, config = { align = 'cm' }, nodes = { _view_code_button.node } },
+															{ n = G.UIT.R, config = { align = 'cm' }, nodes = { _copy_code_button.node } },
+														},
+													},
+												},
+											},
 											_leave_lobby_button.node,
 										},
 									},
@@ -75,28 +90,6 @@ end
 
 create_lobby_buttons = function()
 	if not _lobby_buttons_initialized then
-		_lobby_options_button = MPAPI.disableable_button({
-			id = 'spdrn_lobby_options',
-			button = 'spdrn_lobby_options',
-			colour = G.C.ORANGE,
-			minw = 3.65,
-			minh = 1.55,
-			label = localize('b_lobby_options_cap'),
-			scale = 0.7,
-			col = true,
-			enabled = true,
-		})
-		_leave_lobby_button = MPAPI.disableable_button({
-			id = 'spdrn_leave_lobby',
-			button = 'spdrn_leave_lobby',
-			colour = G.C.RED,
-			minw = 3.65,
-			minh = 1.55,
-			label = localize('b_leave_lobby_cap'),
-			scale = 0.7,
-			col = true,
-			enabled = true,
-		})
 		_start_game_button = MPAPI.disableable_button({
 			id = 'spdrn_start_game',
 			button = 'spdrn_start_game',
@@ -117,18 +110,48 @@ create_lobby_buttons = function()
 				return #_current_lobby_ref:get_players() >= gm:get_min_players('private')
 			end,
 		})
-		_gamemode_display = MPAPI.ui_element(function()
-			local key = _current_lobby_ref and _current_lobby_ref:get_metadata().gamemode
-			local gm = key and MPAPI.GameModes[key]
-			local label = gm and (gm.display_name or gm.key) or 'None'
-			return {
-				n = G.UIT.R,
-				config = { align = 'cm', padding = 0.05 },
-				nodes = {
-					{ n = G.UIT.T, config = { text = 'Mode: ' .. label, scale = 0.4, colour = G.C.UI.TEXT_LIGHT } },
-				},
-			}
-		end)
+		_lobby_options_button = MPAPI.disableable_button({
+			id = 'spdrn_lobby_options',
+			button = 'spdrn_lobby_options',
+			colour = G.C.ORANGE,
+			minw = 2.65,
+			minh = 1.35,
+			label = localize('b_lobby_options_cap'),
+			scale = 0.7,
+			col = true,
+			enabled = true,
+		})
+		_view_code_button = MPAPI.disableable_button({
+			id = 'spdrn_view_code',
+			button = 'spdrn_view_code',
+			colour = G.C.GREEN,
+			minw = 3.65,
+			minh = 0.6,
+			label = { localize('b_view_code_cap') },
+			scale = 0.45,
+			enabled = true,
+		})
+		_copy_code_button = MPAPI.disableable_button({
+			id = 'spdrn_copy_code',
+			button = 'spdrn_copy_code',
+			colour = G.C.PURPLE,
+			minw = 3.65,
+			minh = 0.6,
+			label = { localize('b_copy_code_cap') },
+			scale = 0.45,
+			enabled = true,
+		})
+		_leave_lobby_button = MPAPI.disableable_button({
+			id = 'spdrn_leave_lobby',
+			button = 'spdrn_leave_lobby',
+			colour = G.C.RED,
+			minw = 3.65,
+			minh = 1.55,
+			label = localize('b_leave_lobby_cap'),
+			scale = 0.7,
+			col = true,
+			enabled = true,
+		})
 	end
 
 	_lobby_buttons_initialized = true
@@ -138,43 +161,36 @@ end
 -- LOGIC FUNCTIONS
 -----------------------------
 
-SPDRN.setup_lobby_events = function(lobby, lobby_ui)
+SPDRN.setup_lobby_events = function(lobby)
 	_current_lobby_ref = lobby
-	_current_lobby_ui_ref = lobby_ui
+	_current_lobby_ui_ref = MPAPI.create_lobby_ui(lobby)
 
-	lobby:on('player_joined', function(player_id)
-		SPDRN.sendDebugMessage('Player joined: ' .. tostring(player_id))
+	local update_game_buttons = function()
 		if _start_game_button then
 			_start_game_button:update()
 		end
+	end
+
+	lobby:on('player_joined', function(player_id)
+		SPDRN.sendDebugMessage('Player joined: ' .. tostring(player_id))
+		update_game_buttons()
 	end)
 
 	lobby:on('player_left', function(player_id)
 		SPDRN.sendDebugMessage('Player left: ' .. tostring(player_id))
-		if _start_game_button then
-			_start_game_button:update()
-		end
+		update_game_buttons()
 	end)
 
 	lobby:on('connected', function()
-		if _start_game_button then
-			_start_game_button:update()
-		end
-		if _gamemode_display then
-			_gamemode_display:update()
-		end
+		update_game_buttons()
 	end)
 
 	lobby:on('metadata_changed', function(metadata)
-		if _gamemode_display then
-			_gamemode_display:update()
-		end
+		update_game_buttons()
 	end)
 
 	lobby:on('host_changed', function()
-		if _start_game_button then
-			_start_game_button:update()
-		end
+		update_game_buttons()
 	end)
 
 	lobby:on('error', function(err)
@@ -274,4 +290,44 @@ G.FUNCS.spdrn_leave_lobby = function()
 	if _current_lobby_ref then
 		_current_lobby_ref:leave()
 	end
+end
+
+G.FUNCS.spdrn_view_code = function(e)
+	local text_config = e.children[1].children[1].config
+	local code = _current_lobby_ref and _current_lobby_ref.code
+	if not code then
+		return
+	end
+	if text_config.text ~= code then
+		e.config.colour = G.C.ETERNAL
+		text_config.text = code
+	else
+		e.config.colour = G.C.GREEN
+		text_config.text = localize('b_view_code_cap')
+	end
+	e.UIBox:recalculate()
+end
+
+G.FUNCS.spdrn_copy_code = function(e)
+	local code = _current_lobby_ref and _current_lobby_ref.code
+	if not code then
+		return
+	end
+	love.system.setClipboardText(code)
+
+	local text_config = e.children[1].children[1].config
+	e.config.colour = G.C.ETERNAL
+	text_config.text = localize('k_copied_cap')
+	e.UIBox:recalculate()
+
+	G.E_MANAGER:add_event(Event({
+		trigger = 'after',
+		delay = 1.5,
+		func = function()
+			e.config.colour = G.C.PURPLE
+			text_config.text = localize('b_copy_code_cap')
+			e.UIBox:recalculate()
+			return true
+		end,
+	}))
 end

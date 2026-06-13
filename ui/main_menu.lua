@@ -8,10 +8,12 @@ local create_buttons
 local _pending_gamemode_key = nil
 
 local _find_game_button
+local _find_game_args
 local _create_lobby_button
 local _join_by_code_button
 local _join_from_clipboard_button
 local _practice_button
+local _leaderboard_button
 local _buttons_initialized = false
 
 -----------------------------
@@ -34,7 +36,14 @@ SPDRN.build_pre_lobby_ui = function()
 						config = { align = 'cm', padding = 0.1, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK, mid = true },
 						nodes = {
 							_find_game_button.node,
-							_practice_button.node,
+							{
+								n = G.UIT.C,
+								config = { align = 'cm' },
+								nodes = {
+									{ n = G.UIT.R, config = { align = 'cm' }, nodes = { _practice_button.node } },
+									{ n = G.UIT.R, config = { align = 'cm', padding = 0.05 }, nodes = { _leaderboard_button.node } },
+								},
+							},
 							{
 								n = G.UIT.C,
 								config = { align = 'cm', padding = 0.1, r = 0.2, colour = G.C.BLACK },
@@ -67,7 +76,7 @@ end
 
 create_buttons = function()
 	if not _buttons_initialized then
-		_find_game_button = MPAPI.disableable_button({
+		_find_game_args = {
 			id = 'spdrn_find_game',
 			button = 'spdrn_find_game',
 			colour = G.C.BLUE,
@@ -77,7 +86,8 @@ create_buttons = function()
 			scale = 0.7,
 			col = true,
 			enabled = true,
-		})
+		}
+		_find_game_button = MPAPI.disableable_button(_find_game_args)
 		_create_lobby_button = MPAPI.disableable_button({
 			id = 'spdrn_create_lobby',
 			button = 'spdrn_create_lobby',
@@ -120,6 +130,18 @@ create_buttons = function()
 			col = true,
 			enabled = true,
 		})
+		_leaderboard_button = MPAPI.disableable_button({
+			id = 'spdrn_leaderboard',
+			button = 'spdrn_open_leaderboard',
+			colour = G.C.FILTER,
+			minw = 2.65,
+			minh = 0.6,
+			label = { localize('b_leaderboard_cap') },
+			scale = 0.45,
+			enabled = function()
+				return MPAPI.is_connected()
+			end,
+		})
 	end
 
 	_buttons_initialized = true
@@ -135,6 +157,7 @@ SPDRN.update_main_menu_buttons = function()
 		_create_lobby_button:update()
 		_join_by_code_button:update()
 		_join_from_clipboard_button:update()
+		_leaderboard_button:update()
 	end
 end
 
@@ -369,6 +392,82 @@ SPDRN._join_lobby_with_code = function(code)
 	end)
 end
 
-G.FUNCS.spdrn_find_game = function() end
+G.FUNCS.spdrn_find_game = function()
+	G.FUNCS.overlay_menu({
+		definition = create_UIBox_generic_options({
+			contents = {
+				{ n = G.UIT.R, config = { align = 'cm', padding = 0.1 }, nodes = {
+					{ n = G.UIT.T, config = { text = 'Select Ranked Gamemode', scale = 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true } },
+				} },
+				{
+					n = G.UIT.R,
+					config = { align = 'cm', padding = 0.1 },
+					nodes = {
+						{
+							n = G.UIT.C,
+							config = { align = 'cm', padding = 0.08 },
+							nodes = {
+								UIBox_button({
+									button = 'spdrn_queue_gold_stake_single',
+									label = { 'Gold Stake', 'Single' },
+									colour = G.C.GOLD,
+									minw = 2.5,
+									minh = 2.0,
+									scale = 0.5,
+									col = true,
+								}),
+							},
+						},
+						{
+							n = G.UIT.C,
+							config = { align = 'cm', padding = 0.08 },
+							nodes = {
+								UIBox_button({
+									button = 'spdrn_queue_white_stake_triple',
+									label = { 'White Stake', 'Triple' },
+									colour = G.C.ETERNAL,
+									minw = 2.5,
+									minh = 2.0,
+									scale = 0.5,
+									col = true,
+								}),
+							},
+						},
+					},
+				},
+			},
+		}),
+	})
+end
+
+G.FUNCS.spdrn_queue_gold_stake_single = function()
+	G.FUNCS.exit_overlay_menu()
+	SPDRN._join_ranked_queue('spdrn_gold_stake_single')
+end
+
+G.FUNCS.spdrn_queue_white_stake_triple = function()
+	G.FUNCS.exit_overlay_menu()
+	SPDRN._join_ranked_queue('spdrn_white_stake_triple')
+end
+
+SPDRN._show_searching_state = function(searching)
+	if not _buttons_initialized or not _find_game_args then
+		return
+	end
+	if searching then
+		_find_game_args.label = { localize('b_searching_cap') }
+		_find_game_args.button = 'spdrn_cancel_queue'
+		_find_game_args.colour = G.C.RED
+	else
+		_find_game_args.label = { localize('b_find_game_cap') }
+		_find_game_args.button = 'spdrn_find_game'
+		_find_game_args.colour = G.C.BLUE
+	end
+	_find_game_button:update()
+end
+
+G.FUNCS.spdrn_cancel_queue = function()
+	SPDRN._cancel_queue()
+end
 
 G.FUNCS.spdrn_practice = function() end
